@@ -12,6 +12,7 @@ while i < len(source) - 1:
                 raise TypeError
     i += 1
 
+if(source[-1] == '+'  or source[-1] == '-'): raise TypeError
 source = source.replace(" ", "")
 source = source.replace("+", " + ")
 source = source.replace("-", " - ")
