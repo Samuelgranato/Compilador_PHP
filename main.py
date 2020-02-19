@@ -6,13 +6,14 @@ while i < len(source) - 1:
     if source[i].isdigit():
         if source[i + 1] == " ":
             i += 2
-            while source[i] == " " and i < len(source) - 1:
+            while i < len(source) - 1 and source[i] == " ":
                 i += 1
-            if source[i].isdigit():
+            if i < len(source) - 1 and source[i].isdigit():
                 raise TypeError
     i += 1
 
 source = source.replace(" ", "")
+if(source[-1] == '+'  or source[-1] == '-'): raise TypeError
 source = source.replace("+", " + ")
 source = source.replace("-", " - ")
 source = source.split(" ")
