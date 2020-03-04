@@ -16,6 +16,10 @@ class Tokenizer:
             return 'plus'
         if character == '-':
             return 'minus'
+        if character == '*':
+            return 'mult'
+        if character == '-/':
+            return 'div'
         if character == ' ':
             return 'space'
         if character.isdigit():
@@ -60,7 +64,7 @@ class Parser:
             resultado = int(tokenizer.actual.value)
             tokenizer.selectNext()
 
-            while tokenizer.actual.value == '+' or tokenizer.actual.value == '-':
+            while tokenizer.actual.value == '+' or tokenizer.actual.value == '-' or tokenizer.actual.value == '*' or tokenizer.actual.value == '/':
                 if tokenizer.actual.value == '+':
                     tokenizer.selectNext()
                     if tokenizer.actual.type == 'int':
@@ -73,7 +77,18 @@ class Parser:
                         resultado -= int(tokenizer.actual.value)
                     else:
                         raise TypeError
-
+                if tokenizer.actual.value == '*':
+                    tokenizer.selectNext()
+                    if tokenizer.actual.type == 'int':
+                        resultado *= int(tokenizer.actual.value)
+                    else:
+                        raise TypeError
+                if tokenizer.actual.value == '/':
+                    tokenizer.selectNext()
+                    if tokenizer.actual.type == 'int':
+                        resultado /= int(tokenizer.actual.value)
+                    else:
+                        raise TypeError
                 tokenizer.selectNext()
             if(tokenizer.actual.type != 'EOF'):
                 raise TypeError
