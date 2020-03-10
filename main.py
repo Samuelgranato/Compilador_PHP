@@ -1,4 +1,6 @@
 import sys
+import copy
+import re
 
 class Token:
     def __init__(self,token_type):
@@ -55,55 +57,73 @@ class Tokenizer:
         self.actual = next_token
 
 
+class Pre_proc():
+    def remove_comments(code):
+        code = re.sub(re.compile("\/\*.*?\*\/",re.DOTALL) ,"" ,code)
+        return code
 
 
 class Parser:
     @staticmethod
     def parseExpression(tokenizer):
-        if tokenizer.actual.type == 'int':
-            resultado = int(tokenizer.actual.value)
+        resultado = Parser.parseTerm(tokenizer)
+        tokenizer.selectNext()
+
+        while tokenizer.actual.value == '+' or tokenizer.actual.value == '-':
+            if tokenizer.actual.value == '+':
+                tokenizer.selectNext()
+                resultado += Parser.parseTerm(tokenizer)
+            
+            if tokenizer.actual.value == '-':
+                tokenizer.selectNext()
+                resultado -= Parser.parseTerm(tokenizer)
+            
             tokenizer.selectNext()
 
-            while tokenizer.actual.value == '+' or tokenizer.actual.value == '-' or tokenizer.actual.value == '*' or tokenizer.actual.value == '/':
-                if tokenizer.actual.value == '+':
+        if(tokenizer.actual.type != 'EOF'):
+            raise TypeError
+        return resultado
+    @staticmethod
+    def parseTerm(tokenizer):
+        tokenizer_next = copy.copy(tokenizer)
+
+        if tokenizer.actual.type == 'int':
+            resultado = int(tokenizer.actual.value)
+            tokenizer_next.selectNext()
+
+            while tokenizer_next.actual.value == '*' or tokenizer_next.actual.value == '/':
+                if tokenizer_next.actual.value == '*':
+                    tokenizer_next.selectNext()
                     tokenizer.selectNext()
-                    if tokenizer.actual.type == 'int':
-                        resultado += int(tokenizer.actual.value)
+                    if tokenizer_next.actual.type == 'int':
+                        resultado *= int(tokenizer_next.actual.value)
                     else:
                         raise TypeError
-                if tokenizer.actual.value == '-':
+                if tokenizer_next.actual.value == '/':
+                    tokenizer_next.selectNext()
                     tokenizer.selectNext()
-                    if tokenizer.actual.type == 'int':
-                        resultado -= int(tokenizer.actual.value)
+                    if tokenizer_next.actual.type == 'int':
+                        resultado //= int(tokenizer_next.actual.value)
                     else:
                         raise TypeError
-                if tokenizer.actual.value == '*':
-                    tokenizer.selectNext()
-                    if tokenizer.actual.type == 'int':
-                        resultado *= int(tokenizer.actual.value)
-                    else:
-                        raise TypeError
-                if tokenizer.actual.value == '/':
-                    tokenizer.selectNext()
-                    if tokenizer.actual.type == 'int':
-                        resultado /= int(tokenizer.actual.value)
-                    else:
-                        raise TypeError
+                tokenizer_next.selectNext()
                 tokenizer.selectNext()
-            if(tokenizer.actual.type != 'EOF'):
-                raise TypeError
+
             return resultado
         else:
             raise TypeError
 
+
     @staticmethod
     def run(code):
+        code = Pre_proc.remove_comments(code)
+        # print(code)
         tokenizer = Tokenizer(code)
         return Parser.parseExpression(tokenizer)
 
 def main():
     source = sys.argv[1]
-    # source = '   111 1   + 23'
+    # source = '1+2*3+2+2*2*2'
     print(Parser.run(source))
 
 
