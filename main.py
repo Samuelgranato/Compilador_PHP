@@ -30,6 +30,7 @@ class Tokenizer:
             return 'open_parentheses'
         if character == ')':
             return 'close_parentheses'
+        raise TypeError
 
     def selectNext(self):
         if self.position == len(self.origin):
@@ -52,7 +53,7 @@ class Tokenizer:
             next_token.value += self.origin[self.position]
             self.position += 1
 
-            if self.position == len(self.origin) or self.origin[self.position] == '+' or self.origin[self.position] == '-':
+            if self.position == len(self.origin) or Tokenizer.get_type(self.origin[self.position]) != 'int':
                 self.actual = next_token
                 return
 
@@ -142,7 +143,7 @@ class Parser:
 
 def main():
     source = sys.argv[1]
-    # source = '(2*2'
+    # source = '(((1+1)))'
     print(Parser.run(source))
 
 

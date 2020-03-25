@@ -443,6 +443,40 @@ class TestSum(unittest.TestCase):
         source = '(2*2'
         self.assertRaises(Exception,main.Parser.run,source)
 
+    def test_basetest_roteiro3_6(self):
+        source = '(10*(9*9))'
+        expected = 810
+        result = main.Parser.run(source)
+        self.assertEqual(result, expected, "Should be {0}".format(expected))
+
+    def test_basetest_roteiro3_7(self):
+        source = '(((1+1)))'
+        expected = 2
+        result = main.Parser.run(source)
+        self.assertEqual(result, expected, "Should be {0}".format(expected))
+
+    def test_basetest_roteiro3_8(self):
+        source = '(((1+1)))*2'
+        expected = 4
+        result = main.Parser.run(source)
+        self.assertEqual(result, expected, "Should be {0}".format(expected))
+
+    def test_basetest_roteiro3_9(self):
+        source = '(((1+1))+3)'
+        expected = 5
+        result = main.Parser.run(source)
+        self.assertEqual(result, expected, "Should be {0}".format(expected))
+
+    def test_basetest_roteiro3_10(self):
+        source = '(((1+1))'
+        self.assertRaises(Exception,main.Parser.run,source)
+
+    def test_basetest_roteiro3_11(self):
+        source = '(((1+++1))+3)'
+        expected = 5
+        result = main.Parser.run(source)
+        self.assertEqual(result, expected, "Should be {0}".format(expected))
+
     
 
 if __name__ == '__main__':
