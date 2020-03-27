@@ -477,6 +477,42 @@ class TestSum(unittest.TestCase):
         result = main.Parser.run(source)
         self.assertEqual(result, expected, "Should be {0}".format(expected))
 
+    def test_parentheses1(self):
+        source = '(1)'
+        expected = 1
+        result = main.Parser.run(source)
+        self.assertEqual(result, expected, "Should be {0}".format(expected))
+
+    def test_parentheses2(self):
+        source = '(-1)'
+        expected = -1
+        result = main.Parser.run(source)
+        self.assertEqual(result, expected, "Should be {0}".format(expected))
+
+    def test_parentheses3(self):
+        source = '(--++++-1)'
+        expected = -1
+        result = main.Parser.run(source)
+        self.assertEqual(result, expected, "Should be {0}".format(expected))
+
+    def test_parentheses4(self):
+        source = '(2*(2*(2*(++++-1))))'
+        expected = -8
+        result = main.Parser.run(source)
+        self.assertEqual(result, expected, "Should be {0}".format(expected))
+
+    def test_parentheses5(self):
+        source = '2*(1/*)*/)'
+        expected = 2
+        result = main.Parser.run(source)
+        self.assertEqual(result, expected, "Should be {0}".format(expected))
+
+    def test_parentheses6(self):
+        source = '2/(1)'
+        expected = 2
+        result = main.Parser.run(source)
+        self.assertEqual(result, expected, "Should be {0}".format(expected))
+
     
 
 if __name__ == '__main__':
