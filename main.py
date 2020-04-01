@@ -186,22 +186,29 @@ class Parser:
 
 
     @staticmethod
-    def run(code):
-        code = Pre_proc.remove_comments(code)
-        tokenizer = Tokenizer(code)
-        parse_result = Parser.parseExpression(tokenizer)
-        if tokenizer.actual.type != 'EOF':
-            raise TypeError
+    def run(source):
+        sourcefile = open(source, 'r') 
+        lines = sourcefile.readlines() 
+        for line in lines:
+            line = Pre_proc.remove_comments(line.strip())
+            tokenizer = Tokenizer(line)
+            parse_result = Parser.parseExpression(tokenizer)
+            if tokenizer.actual.type != 'EOF':
+                raise TypeError
 
-        result = parse_result.Evaluate()
+            result = parse_result.Evaluate()
+
+            print(result)
+                
 
 
-        return result
+        
+
 
 def main():
     source = sys.argv[1]
     # source = '   1   -  3    0   '
-    print(Parser.run(source))
+    Parser.run(source)
 
 
 if __name__== "__main__":
