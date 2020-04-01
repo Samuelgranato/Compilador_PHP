@@ -2,6 +2,49 @@ import sys
 import copy
 import re
 
+class Node:
+    # value = 0
+
+    def __init__(self,value):
+        self.value = value
+        self.children = []
+
+
+    def Evaluate():
+        pass
+
+
+class BinOp(Node):
+    def Evaluate(self):
+        if self.value == '+':
+            return self.children[0].Evaluate() + self.children[1].Evaluate()
+        
+        if self.value == '-':
+            return self.children[0].Evaluate() - self.children[1].Evaluate()
+
+        if self.value == '*':
+            return self.children[0].Evaluate() * self.children[1].Evaluate()
+
+        if self.value == '/':
+            return self.children[0].Evaluate() // self.children[1].Evaluate()
+
+
+
+class UnOp(Node):
+    def Evaluate(self):
+        if self.value == '+':
+            return self.children[0].Evaluate()
+        else:
+            return -self.children[0].Evaluate()
+
+class IntVal(Node):
+    def Evaluate(self):
+        return self.value
+
+class NoOp(Node):
+    def Evaluate(self):
+        pass
+
 class Token:
     def __init__(self,token_type):
         self.type = token_type
@@ -71,35 +114,45 @@ class Pre_proc():
 class Parser:
     @staticmethod
     def parseExpression(tokenizer):
-        resultado = Parser.parseTerm(tokenizer)
+        node = Parser.parseTerm(tokenizer)
+        root = node
 
         while tokenizer.actual.value == '+' or tokenizer.actual.value == '-':
-            if tokenizer.actual.value == '+':
-                tokenizer.selectNext()
-                resultado += Parser.parseTerm(tokenizer)
-            
-            if tokenizer.actual.value == '-':
-                tokenizer.selectNext()
-                resultado -= Parser.parseTerm(tokenizer)
-            
-        return resultado
+                if len(root.children) == 2:
+                    root_aux = BinOp(tokenizer.actual.value)
+                    root_aux.children.append(root)
+                    tokenizer.selectNext()
+                    root_aux.children.append(Parser.parseTerm(tokenizer))
+                    root = root_aux
+                else:
+                    root = BinOp(tokenizer.actual.value)
+                    root.children.append(node)
+                    tokenizer.selectNext()
+                    root.children.append(Parser.parseTerm(tokenizer))           
+        return root
 
     @staticmethod
     def parseTerm(tokenizer):
-
-        resultado = Parser.parseFactor(tokenizer)
+        node = Parser.parseFactor(tokenizer)
+        term_root = node
         tokenizer.selectNext()
 
+        
         while tokenizer.actual.value == '*' or tokenizer.actual.value == '/':
-            if tokenizer.actual.value == '*':
+            if len(term_root.children) == 2:
+                term_root_aux = BinOp(tokenizer.actual.value)
+                term_root_aux.children.append(term_root)
                 tokenizer.selectNext()
-                resultado *= int(Parser.parseFactor(tokenizer))
-            if tokenizer.actual.value == '/':
+                term_root_aux.children.append(Parser.parseFactor(tokenizer))
+                term_root = term_root_aux
+            else:
+                term_root = BinOp(tokenizer.actual.value)
+                term_root.children.append(node)
                 tokenizer.selectNext()
-                resultado //= int(Parser.parseFactor(tokenizer))
+                term_root.children.append(Parser.parseFactor(tokenizer))
             tokenizer.selectNext()
 
-        return resultado
+        return term_root
 
 
 
@@ -107,44 +160,55 @@ class Parser:
         resultado = 0
 
         if tokenizer.actual.type == 'int':
-            resultado = int(tokenizer.actual.value)
-            return resultado
+            factor_root = IntVal(int(tokenizer.actual.value))
+            return factor_root
         
         elif tokenizer.actual.value == '+' or tokenizer.actual.value == '-' or tokenizer.actual.value == '(' or tokenizer.actual.value == ')':
-            if tokenizer.actual.value == '+':
+            if tokenizer.actual.value == '+' or tokenizer.actual.value == '-':
+                factor_root = UnOp(tokenizer.actual.value)
                 tokenizer.selectNext()
-                resultado += Parser.parseFactor(tokenizer)
-                
-            elif tokenizer.actual.value == '-':
-                tokenizer.selectNext()
-                resultado -= Parser.parseFactor(tokenizer)
+                factor_root.children.append(Parser.parseFactor(tokenizer))
 
+        
             elif tokenizer.actual.value == '(':
                 tokenizer.selectNext()
-                resultado += Parser.parseExpression(tokenizer)
+                factor_root = Parser.parseExpression(tokenizer)
+                # new_node.children.append(Parser.parseFactor(tokenizer))
+                # tokenizer.selectNext()
+                # resultado += Parser.parseExpression(tokenizer)
 
                 if(tokenizer.actual.value != ')'):
                     raise TypeError
 
-            return resultado
+            return factor_root
         else:
             raise TypeError
 
 
     @staticmethod
-    def run(code):
-        code = Pre_proc.remove_comments(code)
-        tokenizer = Tokenizer(code)
-        resultado = Parser.parseExpression(tokenizer)
+    def run(source):
+        sourcefile = open(source, 'r') 
+        lines = sourcefile.readlines() 
+        for line in lines:
+            line = Pre_proc.remove_comments(line.strip())
+            tokenizer = Tokenizer(line)
+            parse_result = Parser.parseExpression(tokenizer)
+            if tokenizer.actual.type != 'EOF':
+                raise TypeError
 
-        if tokenizer.actual.type != 'EOF':
-            raise TypeError
-        return resultado
+            result = parse_result.Evaluate()
+
+            print(result)
+                
+
+
+        
+
 
 def main():
     source = sys.argv[1]
-    # source = '(((1+1)))'
-    print(Parser.run(source))
+    # source = '   1   -  3    0   '
+    Parser.run(source)
 
 
 if __name__== "__main__":
