@@ -2,48 +2,70 @@ import sys
 import copy
 import re
 
-class Node:
-    # value = 0
 
+class SymbolTable():
+    
+    def __init__(self):
+        self.table = {}
+
+
+class Node:
     def __init__(self,value):
         self.value = value
         self.children = []
 
-
-    def Evaluate():
+    def Evaluate(symboltable):
         pass
 
 
 class BinOp(Node):
-    def Evaluate(self):
+    def Evaluate(self,symboltable):
         if self.value == '+':
-            return self.children[0].Evaluate() + self.children[1].Evaluate()
+            return self.children[0].Evaluate(symboltable) + self.children[1].Evaluate(symboltable)
         
         if self.value == '-':
-            return self.children[0].Evaluate() - self.children[1].Evaluate()
+            return self.children[0].Evaluate(symboltable) - self.children[1].Evaluate(symboltable)
 
         if self.value == '*':
-            return self.children[0].Evaluate() * self.children[1].Evaluate()
+            return self.children[0].Evaluate(symboltable) * self.children[1].Evaluate(symboltable)
 
         if self.value == '/':
-            return self.children[0].Evaluate() // self.children[1].Evaluate()
+            return self.children[0].Evaluate(symboltable) // self.children[1].Evaluate(symboltable)
 
 
 
 class UnOp(Node):
-    def Evaluate(self):
+    def Evaluate(self,symboltable):
         if self.value == '+':
-            return self.children[0].Evaluate()
+            return self.children[0].Evaluate(symboltable)
         else:
-            return -self.children[0].Evaluate()
+            return -self.children[0].Evaluate(symboltable)
 
 class IntVal(Node):
-    def Evaluate(self):
+    def Evaluate(self,symboltable):
         return self.value
 
 class NoOp(Node):
-    def Evaluate(self):
+    def Evaluate(self,symboltable):
         pass
+
+class Commands(Node):
+    def Evaluate(self,symboltable):
+        for child in self.children:
+            child.Evaluate(symboltable)
+
+class Echo(Node):
+    def Evaluate(self,symboltable):
+        print(self.children[0].Evaluate(symboltable))
+
+class Assignment(Node):
+    def Evaluate(self,symboltable):
+        value = self.children[1].Evaluate(symboltable)
+        symboltable.table[self.children[0].value] = value
+
+class Identifier(Node):
+    def Evaluate(self,symboltable):
+        return symboltable.table[self.value]
 
 class Token:
     def __init__(self,token_type):
@@ -55,6 +77,16 @@ class Tokenizer:
         self.origin = origin
         self.position = 0
         self.selectNext()
+
+    def get_special_type(special):
+        if special[0] == '$':
+            pattern = re.compile("[$][a-zA-Z][a-zA-Z0-9_]*")
+            if pattern.match(special):
+                return 'identifier'
+            else:
+                raise TypeError
+        if special == 'echo':
+            return 'echo'
 
     def get_type(character):
         if character == '+':
@@ -73,7 +105,17 @@ class Tokenizer:
             return 'open_parentheses'
         if character == ')':
             return 'close_parentheses'
-        raise TypeError
+        if character == '{':
+            return 'open_block'
+        if character == '}':
+            return 'close_block'
+        if character == '=':
+            return 'assignment'
+        if character == ';':
+            return 'semi-collon'
+        else:
+            return 'special'
+
 
     def selectNext(self):
         if self.position == len(self.origin):
@@ -82,7 +124,7 @@ class Tokenizer:
             return
 
         current_char = self.origin[self.position]
-        while(current_char == ' '):
+        while(current_char == ' ' or current_char == '\n'):
             self.position += 1
             if self.position == len(self.origin):
                 next_token = Token('EOF')
@@ -92,18 +134,42 @@ class Tokenizer:
             current_char = self.origin[self.position]
             
         next_token = Token(Tokenizer.get_type(current_char))
-        while Tokenizer.get_type(current_char) == next_token.type:
-            next_token.value += self.origin[self.position]
-            self.position += 1
 
-            if self.position == len(self.origin) or Tokenizer.get_type(self.origin[self.position]) != 'int':
-                self.actual = next_token
+        if next_token.type != 'special':
+            while Tokenizer.get_type(current_char) == next_token.type:
+                next_token.value += self.origin[self.position]
+                self.position += 1
+
+                if self.position == len(self.origin) or (Tokenizer.get_type(self.origin[self.position]) != 'int' and Tokenizer.get_type(self.origin[self.position]) != 'function'):
+                    self.actual = next_token
+                    return
+
+                current_char = self.origin[self.position]
+
+
+            self.actual = next_token
+
+        else:
+            while Tokenizer.get_type(current_char) != 'space' and current_char != ';':
+                next_token.value += self.origin[self.position]
+                self.position += 1
+
+                if self.position == len(self.origin) or (Tokenizer.get_type(self.origin[self.position]) != 'int' and Tokenizer.get_type(self.origin[self.position]) != 'special'):
+                    self.actual = next_token
+                    if next_token.value == '\n':
+                        self.selectNext()
+                        return
+                    self.actual.type = Tokenizer.get_special_type(self.actual.value)
+
+                current_char = self.origin[self.position]
+
+
+
+            if next_token.value == '\n':
+                self.selectNext()
                 return
-
-            current_char = self.origin[self.position]
-
-
-        self.actual = next_token
+            self.actual = next_token
+            self.actual.type = Tokenizer.get_special_type(self.actual.value)
 
 
 class Pre_proc():
@@ -112,6 +178,54 @@ class Pre_proc():
         return code
 
 class Parser:
+    @staticmethod
+    def parseBlock(tokenizer):
+        node_root = Node(None)
+        block_root = Commands(node_root)
+
+        if tokenizer.actual.value == '{':
+            tokenizer.selectNext()
+
+            while tokenizer.actual.value != '}':
+                command = Parser.parseCommand(tokenizer)
+                if command != None:
+                    block_root.children.append(command)
+                tokenizer.selectNext()
+
+        else:
+            raise TypeError
+
+        return block_root
+
+
+    @staticmethod
+    def parseCommand(tokenizer):
+        if tokenizer.actual.type == 'identifier':
+            command = Assignment(None)
+            identifier = Identifier(tokenizer.actual.value)
+            command.children.append(identifier)
+            tokenizer.selectNext()
+
+            if tokenizer.actual.value == '=':
+                tokenizer.selectNext()
+                
+                command.children.append(Parser.parseExpression(tokenizer))
+                return command
+        elif tokenizer.actual.value == 'echo':
+            command = Echo(tokenizer.actual.value)
+            tokenizer.selectNext()
+            command.children.append(Parser.parseExpression(tokenizer))
+            return command
+
+        elif tokenizer.actual.value == ';':
+            pass
+
+        else:
+            command = Parser.parseBlock(tokenizer)
+            return command
+
+        
+        
     @staticmethod
     def parseExpression(tokenizer):
         node = Parser.parseTerm(tokenizer)
@@ -154,8 +268,7 @@ class Parser:
 
         return term_root
 
-
-
+    @staticmethod
     def parseFactor(tokenizer):
         resultado = 0
 
@@ -163,7 +276,7 @@ class Parser:
             factor_root = IntVal(int(tokenizer.actual.value))
             return factor_root
         
-        elif tokenizer.actual.value == '+' or tokenizer.actual.value == '-' or tokenizer.actual.value == '(' or tokenizer.actual.value == ')':
+        elif tokenizer.actual.value == '+' or tokenizer.actual.value == '-' or tokenizer.actual.value == '(' or tokenizer.actual.value == ')' or tokenizer.actual.type == 'identifier':
             if tokenizer.actual.value == '+' or tokenizer.actual.value == '-':
                 factor_root = UnOp(tokenizer.actual.value)
                 tokenizer.selectNext()
@@ -173,41 +286,32 @@ class Parser:
             elif tokenizer.actual.value == '(':
                 tokenizer.selectNext()
                 factor_root = Parser.parseExpression(tokenizer)
-                # new_node.children.append(Parser.parseFactor(tokenizer))
-                # tokenizer.selectNext()
-                # resultado += Parser.parseExpression(tokenizer)
 
                 if(tokenizer.actual.value != ')'):
                     raise TypeError
+
+            elif tokenizer.actual.type == 'identifier':
+                factor_root = Identifier(tokenizer.actual.value)
 
             return factor_root
         else:
             raise TypeError
 
-
     @staticmethod
     def run(source):
         sourcefile = open(source, 'r') 
-        lines = sourcefile.readlines() 
-        for line in lines:
-            line = Pre_proc.remove_comments(line.strip())
-            tokenizer = Tokenizer(line)
-            parse_result = Parser.parseExpression(tokenizer)
-            if tokenizer.actual.type != 'EOF':
-                raise TypeError
+        lines = sourcefile.read() 
 
-            result = parse_result.Evaluate()
-
-            print(result)
-                
-
-
+        # line = Pre_proc.remove_comments(line.strip())
+        tokenizer = Tokenizer(lines)
+        ast = Parser.parseBlock(tokenizer)
+        symboltable = SymbolTable()
+        ast.Evaluate(symboltable)
         
-
 
 def main():
     source = sys.argv[1]
-    # source = '   1   -  3    0   '
+    # source = 'input.php'
     Parser.run(source)
 
 
