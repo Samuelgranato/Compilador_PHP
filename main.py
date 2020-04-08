@@ -124,7 +124,7 @@ class Tokenizer:
             return
 
         current_char = self.origin[self.position]
-        while(current_char == ' '):
+        while(current_char == ' ' or current_char == '\n'):
             self.position += 1
             if self.position == len(self.origin):
                 next_token = Token('EOF')
@@ -150,7 +150,7 @@ class Tokenizer:
             self.actual = next_token
 
         else:
-            while Tokenizer.get_type(current_char) != 'space':
+            while Tokenizer.get_type(current_char) != 'space' and current_char != ';':
                 next_token.value += self.origin[self.position]
                 self.position += 1
 
@@ -160,7 +160,6 @@ class Tokenizer:
                         self.selectNext()
                         return
                     self.actual.type = Tokenizer.get_special_type(self.actual.value)
-                    return
 
                 current_char = self.origin[self.position]
 
@@ -311,8 +310,8 @@ class Parser:
         
 
 def main():
-    # source = sys.argv[1]
-    source = 'input.php'
+    source = sys.argv[1]
+    # source = 'input.php'
     Parser.run(source)
 
 
