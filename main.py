@@ -85,7 +85,7 @@ class Tokenizer:
                 return 'identifier'
             else:
                 raise TypeError
-        if special == 'echo':
+        if special.lower() == 'echo':
             return 'echo'
 
     def get_type(character):
@@ -150,11 +150,11 @@ class Tokenizer:
             self.actual = next_token
 
         else:
-            while Tokenizer.get_type(current_char) != 'space' and current_char != ';':
+            while Tokenizer.get_type(current_char) != 'space' and current_char != ';' :
                 next_token.value += self.origin[self.position]
                 self.position += 1
 
-                if self.position == len(self.origin) or (Tokenizer.get_type(self.origin[self.position]) != 'int' and Tokenizer.get_type(self.origin[self.position]) != 'special'):
+                if self.position == len(self.origin) or (Tokenizer.get_type(self.origin[self.position]) != 'int' and Tokenizer.get_type(self.origin[self.position]) != 'special') :
                     self.actual = next_token
                     if next_token.value == '\n':
                         self.selectNext()
@@ -211,10 +211,12 @@ class Parser:
                 
                 command.children.append(Parser.parseExpression(tokenizer))
                 return command
-        elif tokenizer.actual.value == 'echo':
+        elif tokenizer.actual.value.lower() == 'echo':
             command = Echo(tokenizer.actual.value)
             tokenizer.selectNext()
             command.children.append(Parser.parseExpression(tokenizer))
+            if tokenizer.actual.value != ';':
+                raise TypeError
             return command
 
         elif tokenizer.actual.value == ';':
@@ -301,8 +303,9 @@ class Parser:
     def run(source):
         sourcefile = open(source, 'r') 
         lines = sourcefile.read() 
+        sourcefile.close()
 
-        # line = Pre_proc.remove_comments(line.strip())
+        lines = Pre_proc.remove_comments(lines)
         tokenizer = Tokenizer(lines)
         ast = Parser.parseBlock(tokenizer)
         symboltable = SymbolTable()
