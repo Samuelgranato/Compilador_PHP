@@ -25,7 +25,6 @@ class TestSum(unittest.TestCase):
     def tearDown(self):
         os.remove(test_fileName)
 
-
     def test_1(self):
         source = '''{echo 1+2;}'''
         write_testFile(source)
@@ -103,7 +102,6 @@ class TestSum(unittest.TestCase):
         main.main()
         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
 
-
     def test_12(self):
         source = '''{ echo 3+ /* a */;}'''
         write_testFile(source)
@@ -120,21 +118,13 @@ class TestSum(unittest.TestCase):
         write_testFile(source)
         with self.assertRaises(Exception):
             main.main()
-
-
-        ######################################################
-        ######################################################
-        ######################################################
-        ######################################################
-    
-    
+  
     def test_15(self):
         source = '''{echo 10  -  30;  }'''
         write_testFile(source)
         expected = '-20\n'
         main.main()
-        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
-    
+        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))  
     
     def test_16(self):
         source = '''{echo 1;}'''
@@ -142,35 +132,30 @@ class TestSum(unittest.TestCase):
         expected = '1\n'
         main.main()
         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
-    
-    
+
     def test_17(self):
         source = '''{echo +1}'''
         write_testFile(source)
         with self.assertRaises(Exception):
-            main.main()
-    
+            main.main() 
     
     def test_18(self):
         source = '''{echo 1 1;}'''
         write_testFile(source)
         with self.assertRaises(Exception):
-            main.main()
-    
+            main.main()  
     
     def test_19(self):
         source= '''{echo +1+;}'''
         write_testFile(source)
         with self.assertRaises(Exception):
-            main.main()
-    
+            main.main()  
     
     def test_20(self):
         source= '''{echo 1 1-3;}'''
         write_testFile(source)
         with self.assertRaises(Exception):
-            main.main()
-    
+            main.main()   
     
     def test_21(self):
         source= '''{echo 1-30+;}'''
@@ -178,62 +163,49 @@ class TestSum(unittest.TestCase):
         with self.assertRaises(Exception):
             main.main()
     
-    
-    
     def test_22(self):
         source= '''{echo +1-30-;}'''
         write_testFile(source)
         with self.assertRaises(Exception):
             main.main()
     
-    
-    
     def test_23(self):
         source= '''{echo -1-30-;}'''
         write_testFile(source)
         with self.assertRaises(Exception):
-            main.main()
-    
+            main.main()  
     
     def test_24(self):
         source= '''{echo    1   --  3    0   ;}'''
         write_testFile(source)
         with self.assertRaises(Exception):
             main.main()
-
-    
-    
+  
     def test_25(self):
         source= '''{echo   2  *  2   ;}'''
         write_testFile(source)
         expected = '4\n'
         main.main()
-        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
-
-    
+        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))  
     
     def test_26(self):
         source= '''{echo 8/3; }''' #corta a parte decimal
         write_testFile(source)
         expected = '2\n'
         main.main()
-        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
-    
+        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected)) 
     
     def test_27(self):
         source= '''{echo *3**2*;}'''
         write_testFile(source)
         with self.assertRaises(Exception):
-            main.main()
-    
+            main.main()  
     
     def test_28(self):
         source= '''{echo *;}'''
         write_testFile(source)
         with self.assertRaises(Exception):
-            main.main()
-
-    
+            main.main()  
     
     ## Comentarios
     def test_29(self):
@@ -241,8 +213,7 @@ class TestSum(unittest.TestCase):
         write_testFile(source)
         expected = '2\n'
         main.main()
-        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
-    
+        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))   
     
     def test_30(self):
         source= '''{echo /*a2*/1+1;}'''
@@ -250,16 +221,13 @@ class TestSum(unittest.TestCase):
         expected = '2\n'
         main.main()
         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
-
-    
-    
+     
     def test_31(self):
         source= '''{echo /*a2*/ /*a2*/ /*a2*/ /*a2*/ 1+1/*a2*//*a2*//*a2*/;}'''
         write_testFile(source)
         expected = '2\n'
         main.main()
-        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
-        
+        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))       
     
     def test_32(self):
         source= '''{echo /*a2*//*a2*/1/*a2*/+/*a2*/3/*a2*//*a2*//*a2*//*a2*//*a2*//*a2*//*a2*/;}'''
@@ -267,8 +235,6 @@ class TestSum(unittest.TestCase):
         expected = '4\n'
         main.main()
         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
-
-    
     
     def test_33(self):
         source= '''{echo 1+1/*a2;}'''
@@ -276,16 +242,11 @@ class TestSum(unittest.TestCase):
         with self.assertRaises(Exception):
             main.main()
     
-        
-    
     def test_34(self):
         source= '''{echo /**/''' #vazio
         write_testFile(source)
         with self.assertRaises(Exception):
             main.main()
-    
-
-    
     
     def test_35(self):
         source= '''{echo +--++3;}'''
@@ -301,8 +262,6 @@ class TestSum(unittest.TestCase):
         expected = '4\n'
         main.main()
         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
-
-    
     
     def test_37(self):
         source= '''{echo (((1+1)))*2;}'''
@@ -318,8 +277,6 @@ class TestSum(unittest.TestCase):
         expected = '5\n'
         main.main()
         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
-
-    
     
     def test_39(self):
         source= '''{echo (((1+++1))+3);}'''
@@ -327,9 +284,6 @@ class TestSum(unittest.TestCase):
         expected = '5\n'
         main.main()
         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
-
-
-    
     
     def test_40(self):
         source= '''{echo 2*(1/*)*/);}'''
@@ -370,17 +324,17 @@ echo $z_final;
         main.main()
         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))    
     
-#     def test_45(self):
-#         source= '''{
-# $x1 = 3;
-# $y2 = 4;
-# $z_final = ($x1 + $y2) *33;
-# echo $z_final;
-# }'''
-#         write_testFile(source)
-#         expected = '231\n'
-#         main.main()
-#         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))    
+    def test_45(self):
+        source= '''{
+$x1 = 3;
+$y2 = 4;
+$z_final = ($x1 + $y2) *33;
+echo $z_final;
+}'''
+        write_testFile(source)
+        expected = '231\n'
+        main.main()
+        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))    
     
     def test_46(self):
         source= '''{
@@ -397,9 +351,6 @@ ECHO 4;
 '''
         main.main()
         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
-
-
-    
 
 if __name__ == '__main__':
     unittest.main()

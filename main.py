@@ -78,43 +78,38 @@ class Tokenizer:
         self.position = 0
         self.selectNext()
 
-    def get_special_type(special):
-        if special[0] == '$':
-            pattern = re.compile("[$][a-zA-Z][a-zA-Z0-9_]*")
-            if pattern.match(special):
-                return 'identifier'
-            else:
-                raise TypeError
-        if special.lower() == 'echo':
-            return 'echo'
 
-    def get_type(character):
-        if character == '+':
-            return 'plus'
-        if character == '-':
-            return 'minus'
-        if character == '*':
-            return 'mult'
-        if character == '/':
-            return 'div'
-        if character == ' ':
-            return 'space'
-        if character.isdigit():
-            return 'int'
-        if character == '(':
-            return 'open_parentheses'
-        if character == ')':
-            return 'close_parentheses'
-        if character == '{':
-            return 'open_block'
-        if character == '}':
-            return 'close_block'
-        if character == '=':
-            return 'assignment'
-        if character == ';':
-            return 'semi-collon'
-        else:
-            return 'special'
+    def get_matches(token):
+        matches = 0
+        ret_type = None
+        for token_type, regex in Tokenizer.get_tokens_regex().items():
+            pattern = re.compile(regex[0]) if regex[1] == None else re.compile(regex[0], flags = regex[1])
+            if pattern.match(token):
+                matches += 1
+                ret_type = token_type
+        return matches,ret_type
+
+
+    def get_tokens_regex():
+        tokens_regex = {}
+
+        tokens_regex['plus']              = ('^[+]$',None)
+        tokens_regex['minus']             = ('^[-]$',None)
+        tokens_regex['mult']              = ('^[*]$',None)
+        tokens_regex['div']               = ('^[/]$',None)
+        tokens_regex['space']             = ('^[ ]+$' ,None)
+        tokens_regex['int']               = ('^[0-9]+$',None)
+        tokens_regex['open_parentheses']  = ('^[(]$',None)
+        tokens_regex['close_parentheses'] = ('^[)]$',None)
+        tokens_regex['open_block']        = ('^[{]$',None)
+        tokens_regex['close_block']       = ('^[}]$',None)
+        tokens_regex['assignment']        = ('^[=]$',None)
+        tokens_regex['semi-collon']       = ('^[;]$',None)
+        tokens_regex['echo']              = ('^echo$',re.IGNORECASE)
+        tokens_regex['identifier']        = ('^[$][a-zA-Z][a-zA-Z0-9_]*$',None)
+
+        return tokens_regex
+
 
 
     def selectNext(self):
@@ -123,54 +118,33 @@ class Tokenizer:
             self.actual = next_token
             return
 
-        current_char = self.origin[self.position]
-        while(current_char == ' ' or current_char == '\n'):
+        token_value = self.origin[self.position]
+        matches, token_type = Tokenizer.get_matches(token_value)
+        
+        while matches != 1:
             self.position += 1
-            if self.position == len(self.origin):
-                next_token = Token('EOF')
-                self.actual = next_token
-                return
+            token_value += self.origin[self.position]
+            matches, token_type = Tokenizer.get_matches(token_value)
 
-            current_char = self.origin[self.position]
-            
-        next_token = Token(Tokenizer.get_type(current_char))
+        token_value_aux = token_value
 
-        if next_token.type != 'special':
-            while Tokenizer.get_type(current_char) == next_token.type:
-                next_token.value += self.origin[self.position]
-                self.position += 1
+        while matches != 0 and self.position + 1  != len(self.origin):
+            token_value = token_value_aux
+            self.position += 1
+            token_value_aux += self.origin[self.position]
+            matches, token_type_dummy = Tokenizer.get_matches(token_value_aux)
 
-                if self.position == len(self.origin) or (Tokenizer.get_type(self.origin[self.position]) != 'int' and Tokenizer.get_type(self.origin[self.position]) != 'function'):
-                    self.actual = next_token
-                    return
+        if token_value.endswith('\n'):
+            token_value = token_value.replace('\n','')
 
-                current_char = self.origin[self.position]
+        if ' ' in token_value:
+            self.selectNext()
+            return
+        
+        self.actual = Token(token_type)
+        self.actual.value = token_value
 
-
-            self.actual = next_token
-
-        else:
-            while Tokenizer.get_type(current_char) != 'space' and current_char != ';' :
-                next_token.value += self.origin[self.position]
-                self.position += 1
-
-                if self.position == len(self.origin) or (Tokenizer.get_type(self.origin[self.position]) != 'int' and Tokenizer.get_type(self.origin[self.position]) != 'special') :
-                    self.actual = next_token
-                    if next_token.value == '\n':
-                        self.selectNext()
-                        return
-                    self.actual.type = Tokenizer.get_special_type(self.actual.value)
-
-                current_char = self.origin[self.position]
-
-
-
-            if next_token.value == '\n':
-                self.selectNext()
-                return
-            self.actual = next_token
-            self.actual.type = Tokenizer.get_special_type(self.actual.value)
-
+        
 
 class Pre_proc():
     def remove_comments(code):
@@ -314,7 +288,6 @@ class Parser:
 
 def main():
     source = sys.argv[1]
-    # source = 'input.php'
     Parser.run(source)
 
 
