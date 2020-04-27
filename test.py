@@ -370,17 +370,17 @@ echo $z_final;
         main.main()
         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))    
     
-#     def test_45(self):
-#         source= '''{
-# $x1 = 3;
-# $y2 = 4;
-# $z_final = ($x1 + $y2) *33;
-# echo $z_final;
-# }'''
-#         write_testFile(source)
-#         expected = '231\n'
-#         main.main()
-#         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))    
+    def test_45(self):
+        source= '''{
+$x1 = 3;
+$y2 = 4;
+$z_final = ($x1 + $y2) *33;
+echo $z_final;
+}'''
+        write_testFile(source)
+        expected = '231\n'
+        main.main()
+        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))    
     
     def test_46(self):
         source= '''{
