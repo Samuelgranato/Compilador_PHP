@@ -363,7 +363,8 @@ ECHO 4;
     }
 }'''
         write_testFile(source)
-        expected = '''1
+        expected = '''0
+1
 2
 3
 4
