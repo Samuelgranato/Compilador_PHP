@@ -146,6 +146,7 @@ class Tokenizer:
         tokens_regex['or']        = ('^or$',None)
         tokens_regex['not']        = ('^!$',None)
         tokens_regex['equals']        = ('^==$',None)
+        tokens_regex['notequals']        = ('^!=$',None)
         tokens_regex['greater']        = ('^>$',None)
         tokens_regex['less']        = ('^<$',None)
         tokens_regex['readline']        = ('^readline\(\)$',None)
@@ -314,7 +315,7 @@ class Parser:
         relexpr_root = node
 
         
-        while tokenizer.actual.value == '==' or tokenizer.actual.value == '>' or tokenizer.actual.value == '<':
+        while tokenizer.actual.value == '==' or tokenizer.actual.value == '>' or tokenizer.actual.value == '<' or tokenizer.actual.value == '!=':
             if len(relexpr_root.children) == 2:
                 relexpr_root_aux = BinOp(tokenizer.actual.value)
                 relexpr_root_aux.children.append(relexpr_root)
