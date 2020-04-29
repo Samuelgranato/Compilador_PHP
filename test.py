@@ -352,5 +352,73 @@ ECHO 4;
         main.main()
         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
 
+    def test_47(self):
+        source= '''{
+    $a = 5;
+    $cnt = 0;
+
+    while($a > $cnt){
+        echo $cnt;
+        $cnt = $cnt + 1;
+    }
+}'''
+        write_testFile(source)
+        expected = '''0
+1
+2
+3
+4
+'''
+        main.main()
+        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
+
+    def test_48(self):
+        source= '''{
+echo 1;
+Echo 2;
+ecHo 3;
+ECHO 4;
+}'''
+        write_testFile(source)
+        expected = '''1
+2
+3
+4
+'''
+        main.main()
+        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
+
+    def test_49(self):
+        source= '''{
+echo 1;
+Echo 2;
+ecHo 3;
+ECHO 4;
+}'''
+        write_testFile(source)
+        expected = '''1
+2
+3
+4
+'''
+        main.main()
+        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
+
+    def test_50(self):
+        source= '''{
+echo 1;
+Echo 2;
+ecHo 3;
+ECHO 4;
+}'''
+        write_testFile(source)
+        expected = '''1
+2
+3
+4
+'''
+        main.main()
+        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
+
 if __name__ == '__main__':
     unittest.main()
