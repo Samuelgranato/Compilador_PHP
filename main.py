@@ -32,14 +32,29 @@ class BinOp(Node):
         if self.value == '/':
             return self.children[0].Evaluate(symboltable) // self.children[1].Evaluate(symboltable)
 
+        if self.value == 'and':
+            return self.children[0].Evaluate(symboltable) and self.children[1].Evaluate(symboltable)
 
+        if self.value == 'or':
+            return self.children[0].Evaluate(symboltable) or self.children[1].Evaluate(symboltable)
+
+        if self.value == '>':
+            return self.children[0].Evaluate(symboltable) > self.children[1].Evaluate(symboltable)
+
+        if self.value == '<':
+            return self.children[0].Evaluate(symboltable) < self.children[1].Evaluate(symboltable)
+
+        if self.value == '==':
+            return self.children[0].Evaluate(symboltable) == self.children[1].Evaluate(symboltable)
 
 class UnOp(Node):
     def Evaluate(self,symboltable):
         if self.value == '+':
             return self.children[0].Evaluate(symboltable)
-        else:
+        elif self.value == '-':
             return -self.children[0].Evaluate(symboltable)
+        else:
+            return not self.children[0].Evaluate(symboltable)
 
 class IntVal(Node):
     def Evaluate(self,symboltable):
@@ -66,6 +81,23 @@ class Assignment(Node):
 class Identifier(Node):
     def Evaluate(self,symboltable):
         return symboltable.table[self.value]
+
+class While(Node):
+    def Evaluate(self,symboltable):
+        while self.children[0].Evaluate(symboltable):
+            self.children[1].Evaluate(symboltable)
+
+class If(Node):
+    def Evaluate(self,symboltable):
+        if self.children[0].Evaluate(symboltable):
+            self.children[1].Evaluate(symboltable)
+        else:
+            if len(self.children) == 3:
+                self.children[2].Evaluate(symboltable)
+
+class Readline(Node):
+    def Evaluate(self,symboltable):
+        return int(input())
 
 class Token:
     def __init__(self,token_type):
@@ -107,6 +139,16 @@ class Tokenizer:
         tokens_regex['semi-collon']       = ('^[;]$',None)
         tokens_regex['echo']              = ('^echo$',re.IGNORECASE)
         tokens_regex['identifier']        = ('^[$][a-zA-Z][a-zA-Z0-9_]*$',None)
+        tokens_regex['while']        = ('^while$',None)
+        tokens_regex['if']        = ('^if$',None)
+        tokens_regex['else']        = ('^else$',None)
+        tokens_regex['and']        = ('^and$',None)
+        tokens_regex['or']        = ('^or$',None)
+        tokens_regex['not']        = ('^!$',None)
+        tokens_regex['equals']        = ('^==$',None)
+        tokens_regex['greater']        = ('^>$',None)
+        tokens_regex['less']        = ('^<$',None)
+        tokens_regex['readline']        = ('^readline\(\)$',None)
 
         return tokens_regex
 
@@ -119,6 +161,9 @@ class Tokenizer:
             return
 
         token_value = self.origin[self.position]
+        while token_value == '\n' and self.position + 1  != len(self.origin):
+            self.position += 1
+            token_value = self.origin[self.position]
         matches, token_type = Tokenizer.get_matches(token_value)
         
         while matches != 1:
@@ -183,16 +228,79 @@ class Parser:
             if tokenizer.actual.value == '=':
                 tokenizer.selectNext()
                 
-                command.children.append(Parser.parseExpression(tokenizer))
+                command.children.append(Parser.parseRelexpr(tokenizer))
                 return command
+
+
         elif tokenizer.actual.value.lower() == 'echo':
             command = Echo(tokenizer.actual.value)
             tokenizer.selectNext()
-            command.children.append(Parser.parseExpression(tokenizer))
+            command.children.append(Parser.parseRelexpr(tokenizer))
+            
             if tokenizer.actual.value != ';':
                 raise TypeError
             return command
 
+
+        elif tokenizer.actual.type == 'while':
+            command = While(tokenizer.actual.value)
+            tokenizer.selectNext()
+
+            if tokenizer.actual.value != '(':
+                raise TypeError
+            tokenizer.selectNext()
+
+            command.children.append(Parser.parseRelexpr(tokenizer))
+
+            if tokenizer.actual.value != ')':
+                raise TypeError
+            tokenizer.selectNext()
+
+            if tokenizer.actual.value == '{':
+                command.children.append(Parser.parseBlock(tokenizer))
+                if tokenizer.actual.value != '}':
+                    raise TypeError
+            else:
+                command.children.append(Parser.parseBlock(tokenizer))
+
+
+            return command
+            
+        elif tokenizer.actual.type == 'if':
+            command = If(tokenizer.actual.value)
+            tokenizer.selectNext()
+
+            if tokenizer.actual.value != '(':
+                raise TypeError
+            tokenizer.selectNext()
+            command.children.append(Parser.parseRelexpr(tokenizer))
+
+            if tokenizer.actual.value != ')':
+                raise TypeError
+            tokenizer.selectNext()
+
+            if tokenizer.actual.value == '{':
+                command.children.append(Parser.parseBlock(tokenizer))
+                if tokenizer.actual.value != '}':
+                    raise TypeError
+            else:
+                command.children.append(Parser.parseCommand(tokenizer))
+
+            tokenizer_next = copy.copy(tokenizer)
+            tokenizer_next.selectNext()
+            if tokenizer_next.actual.value == 'else':
+                tokenizer.selectNext()
+                tokenizer.selectNext()
+                if tokenizer.actual.value == '{':
+                    command.children.append(Parser.parseBlock(tokenizer))
+                    if tokenizer.actual.value != '}':
+                        raise TypeError
+                else:
+                    command.children.append(Parser.parseCommand(tokenizer))
+            
+
+            return command
+            
         elif tokenizer.actual.value == ';':
             pass
 
@@ -200,14 +308,34 @@ class Parser:
             command = Parser.parseBlock(tokenizer)
             return command
 
+    @staticmethod
+    def parseRelexpr(tokenizer):
+        node = Parser.parseExpression(tokenizer)
+        relexpr_root = node
+
         
+        while tokenizer.actual.value == '==' or tokenizer.actual.value == '>' or tokenizer.actual.value == '<':
+            if len(relexpr_root.children) == 2:
+                relexpr_root_aux = BinOp(tokenizer.actual.value)
+                relexpr_root_aux.children.append(relexpr_root)
+                tokenizer.selectNext()
+                relexpr_root_aux.children.append(Parser.parseFactor(tokenizer))
+                relexpr_root = relexpr_root_aux
+            else:
+                relexpr_root = BinOp(tokenizer.actual.value)
+                relexpr_root.children.append(node)
+                tokenizer.selectNext()
+                relexpr_root.children.append(Parser.parseFactor(tokenizer))
+            tokenizer.selectNext()
+
+        return relexpr_root
         
     @staticmethod
     def parseExpression(tokenizer):
         node = Parser.parseTerm(tokenizer)
         root = node
 
-        while tokenizer.actual.value == '+' or tokenizer.actual.value == '-':
+        while tokenizer.actual.value == '+' or tokenizer.actual.value == '-' or tokenizer.actual.value == 'or':
                 if len(root.children) == 2:
                     root_aux = BinOp(tokenizer.actual.value)
                     root_aux.children.append(root)
@@ -228,7 +356,7 @@ class Parser:
         tokenizer.selectNext()
 
         
-        while tokenizer.actual.value == '*' or tokenizer.actual.value == '/':
+        while tokenizer.actual.value == '*' or tokenizer.actual.value == '/' or tokenizer.actual.value == 'and':
             if len(term_root.children) == 2:
                 term_root_aux = BinOp(tokenizer.actual.value)
                 term_root_aux.children.append(term_root)
@@ -252,8 +380,8 @@ class Parser:
             factor_root = IntVal(int(tokenizer.actual.value))
             return factor_root
         
-        elif tokenizer.actual.value == '+' or tokenizer.actual.value == '-' or tokenizer.actual.value == '(' or tokenizer.actual.value == ')' or tokenizer.actual.type == 'identifier':
-            if tokenizer.actual.value == '+' or tokenizer.actual.value == '-':
+        elif tokenizer.actual.value == '+' or tokenizer.actual.value == '-' or tokenizer.actual.value == '!' or tokenizer.actual.value == '(' or tokenizer.actual.value == ')' or tokenizer.actual.type == 'identifier' or tokenizer.actual.type == 'readline':
+            if tokenizer.actual.value == '+' or tokenizer.actual.value == '-' or tokenizer.actual.value == '!':
                 factor_root = UnOp(tokenizer.actual.value)
                 tokenizer.selectNext()
                 factor_root.children.append(Parser.parseFactor(tokenizer))
@@ -261,13 +389,16 @@ class Parser:
         
             elif tokenizer.actual.value == '(':
                 tokenizer.selectNext()
-                factor_root = Parser.parseExpression(tokenizer)
+                factor_root = Parser.parseRelexpr(tokenizer)
 
                 if(tokenizer.actual.value != ')'):
                     raise TypeError
 
             elif tokenizer.actual.type == 'identifier':
                 factor_root = Identifier(tokenizer.actual.value)
+
+            elif tokenizer.actual.type == 'readline':
+                factor_root = Readline(tokenizer.actual.value)
 
             return factor_root
         else:
