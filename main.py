@@ -160,7 +160,6 @@ class Tokenizer:
         tokens_reserved['and']             = 'and'
         tokens_reserved['or']              = 'or'
         tokens_reserved['equals']          = '=='
-
         tokens_reserved['echo']            = 'echo'
         tokens_reserved['readline']        = 'readline()'
         tokens_reserved['true']            = 'true'
@@ -224,7 +223,8 @@ class Tokenizer:
         reserved_tokens = Tokenizer.get_tokens_reserved()
 
         for token_type, value in reserved_tokens.items():
-            if self.origin[self.position: self.position + len(value)].lower() == value:
+            word = self.origin[self.position: self.position + len(value)]
+            if word.lower() == value:
                 self.position += len(value)
                 return value, token_type
 
@@ -239,6 +239,14 @@ class Tokenizer:
             next_token = Token('EOF')
             self.actual = next_token
             return
+
+        while self.origin[self.position] == '\n' or self.origin[self.position] == ' ':
+            self.position += 1
+            
+            if self.position == len(self.origin):
+                next_token = Token('EOF')
+                self.actual = next_token
+                return
 
         position_aux = self.position
         token_return = self.get_token_reserved_value()
@@ -269,17 +277,14 @@ class Pre_proc():
 class Parser:
     @staticmethod
     def parseProgram(tokenizer):
+        commands = Commands(None,'commands')
         if tokenizer.actual.type == 'open_program':
             tokenizer.selectNext()
-            commands = Parser.parseCommand(tokenizer)
-            tokenizer.selectNext()
+            while tokenizer.actual.type != 'close_program':
+                commands.children.append(Parser.parseCommand(tokenizer))
+                tokenizer.selectNext()
 
-            if tokenizer.actual.type != 'close_program':
-                raise TypeError
-
-            program_root = commands
-            
-        return program_root
+        return commands
 
 
     @staticmethod
@@ -295,7 +300,6 @@ class Parser:
                 if command != None:
                     block_root.children.append(command)
                 tokenizer.selectNext()
-
         else:
             raise TypeError
 

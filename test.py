@@ -420,5 +420,24 @@ ECHO 4;
         main.main()
         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
 
+
+    def test_51(self):
+        source= '''<?php
+{
+$x1 = 3;
+$x1 = $x1 +1;
+
+echo $x1;
+
+$y1 = $x1 *100;
+echo $y1;
+}?>'''
+        write_testFile(source)
+        expected = '''4
+400
+'''
+        main.main()
+        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
+
 if __name__ == '__main__':
     unittest.main()
