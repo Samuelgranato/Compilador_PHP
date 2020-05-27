@@ -22,6 +22,16 @@ class SymbolTable():
         self.var_count = 0
         self.loop_count = 0
 
+    def get_inc_loop(self):
+        loop_count = self.loop_count
+        self.loop_count +=1
+        return loop_count
+    
+    def get_inc_var(self):
+        self.var_count +=1
+        return self.var_count * 4
+
+
 
 
 class Node:
@@ -151,9 +161,8 @@ class Assignment(Node):
     def Evaluate(self, symboltable, asm):
         if self.children[0].value not in symboltable.table:
             asm.AddLine('PUSH DWORD 0 ; Alocacao da primeira atribuicao')
-            symboltable.var_count += 1
 
-            var_address = symboltable.var_count*4
+            var_address = symboltable.get_inc_var()
             self.children[1].Evaluate(symboltable, asm)
             symboltable.table[self.children[0].value] = (var_address, self.children[1].type)
         else:
@@ -173,8 +182,7 @@ class Identifier(Node):
 
 class While(Node):
     def Evaluate(self, symboltable, asm):
-        loop_count = symboltable.loop_count
-        symboltable.loop_count +=1
+        loop_count = symboltable.get_inc_loop()
         asm.AddLine('LOOP_{0}: ; unique identifier do contador de loops'.format(loop_count))
         self.children[0].Evaluate(symboltable, asm)
         asm.AddLine('CMP EBX, False ; verifica se o teste deu falso'.format(loop_count))
@@ -187,8 +195,7 @@ class While(Node):
 
 class If(Node):
     def Evaluate(self, symboltable, asm):
-        loop_count = symboltable.loop_count
-        symboltable.loop_count +=1
+        loop_count = symboltable.get_inc_loop()
         has_else = len(self.children) == 3
         self.children[0].Evaluate(symboltable, asm)
         asm.AddLine('CMP EBX, False ; verifica se o teste deu falso'.format(loop_count))
