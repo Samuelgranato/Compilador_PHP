@@ -1,12 +1,27 @@
 import sys
 import copy
 import re
+import header
 
+class asmGen():
+    def __init__(self):
+        self.buffer = header.header
+        self.AddLine("")
+
+    def AddLine(self, line):
+        self.buffer.append(line)
+
+    def finish(self):
+        self.AddLine("")
+        self.buffer += header.exiter
 
 class SymbolTable():
     
     def __init__(self):
         self.table = {}
+        self.var_count = 0
+        self.loop_count = 0
+
 
 
 class Node:
@@ -15,115 +30,184 @@ class Node:
         self.children = []
         self.type = node_type
 
-    def Evaluate(symboltable):
+    def Evaluate(symboltable, asm):
         pass
 
 
 class BinOp(Node):
-    def Evaluate(self,symboltable):
-        child0_value = self.children[0].Evaluate(symboltable)
-        child1_value = self.children[1].Evaluate(symboltable)
+    def Evaluate(self, symboltable, asm):
+        self.children[0].Evaluate(symboltable, asm)
+        asm.AddLine('PUSH EBX ; O BinOp guarda o resultado na pillha')
+        self.children[1].Evaluate(symboltable, asm)
 
-        if self.type == 'concat':
-            return str(child0_value) + str(child1_value)
+        # if self.type == 'concat':
+        #     return str(child0_value) + str(child1_value)
 
         if self.type == 'equals':
-            return child0_value == child1_value
+            asm.AddLine('POP EAX ; O BinOp recupera o valor da pilha para EAX')
+            asm.AddLine('CMP EAX, EBX ; O BinOp executa a operacao correspondente')
+            asm.AddLine('CALL binop_je ; Chamada da funcao comparacao')
 
-        if self.children[0].type == 'string' or self.children[1].type == 'string':
-            raise TypeError
+        if self.type == 'plus':
+            asm.AddLine('POP EAX ; O BinOp recupera o valor da pilha para EAX')
+            asm.AddLine('ADD EAX, EBX ; O BinOp executa a operacao correspondente')
+            asm.AddLine('MOV EBX, EAX ; O BinOp retorna o valor em EBX')
 
-        if self.type == 'plus': 
-            return child0_value + child1_value
-        
         if self.type == 'minus':
-            return child0_value - child1_value
+            asm.AddLine('POP EAX ; O BinOp recupera o valor da pilha para EAX')
+            asm.AddLine('SUB EAX, EBX ; O BinOp executa a operacao correspondente')
+            asm.AddLine('MOV EBX, EAX ; O BinOp retorna o valor em EBX')
 
         if self.type == 'mult':
-            return child0_value * child1_value
+            asm.AddLine('POP EAX ; O BinOp recupera o valor da pilha para EAX')
+            asm.AddLine('IMUL EBX ; O BinOp executa a operacao correspondente')
+            asm.AddLine('MOV EBX, EAX ; O BinOp retorna o valor em EBX')
 
         if self.type == 'div':
-            return child0_value // child1_value
+            asm.AddLine('POP EAX ; O BinOp recupera o valor da pilha para EAX')
+            asm.AddLine('IDIV EBX ; O BinOp executa a operacao correspondente')
+            asm.AddLine('MOV EBX, EAX ; O BinOp retorna o valor em EBX')
 
         if self.type == 'and':
-            return child0_value and child1_value
+            asm.AddLine('POP EAX ; O BinOp recupera o valor da pilha para EAX')
+            asm.AddLine('AND EAX, EBX ; O BinOp executa a operacao correspondente')
+            asm.AddLine('CALL binop_jl ; Chamada da funcao comparacao')
 
         if self.type == 'or':
-            return child0_value or child1_value
+            asm.AddLine('POP EAX ; O BinOp recupera o valor da pilha para EAX')
+            asm.AddLine('OR EAX, EBX ; O BinOp executa a operacao correspondente')
+            asm.AddLine('CALL binop_jl ; Chamada da funcao comparacao')
 
         if self.type == 'greater':
-            return child0_value > child1_value
+            asm.AddLine('POP EAX ; O BinOp recupera o valor da pilha para EAX')
+            asm.AddLine('CMP EAX, EBX ; O BinOp executa a operacao correspondente')
+            asm.AddLine('CALL binop_jg ; Chamada da funcao comparacao')
 
         if self.type == 'less':
-            return child0_value < child1_value
+            asm.AddLine('POP EAX ; O BinOp recupera o valor da pilha para EAX')
+            asm.AddLine('CMP EAX, EBX ; O BinOp executa a operacao correspondente')
+            asm.AddLine('CALL binop_jl ; Chamada da funcao comparacao')
 
 
 
 
             
 class UnOp(Node):
-    def Evaluate(self,symboltable):
+    def Evaluate(self, symboltable, asm):
         if self.type == 'plus':
-            return self.children[0].Evaluate(symboltable)
+            self.children[0].Evaluate(symboltable, asm)
+            self.children[0].Evaluate(symboltable, asm)
+            asm.AddLine('PUSH EBX ; O BinOp guarda o resultado na pillha')
+            asm.AddLine('MOV EBX, 0 ; O BinOp guarda o resultado na pillha')
+            asm.AddLine('POP EAX ; O BinOp recupera o valor da pilha para EAX')
+            asm.AddLine('ADD EBX, EAX ; O BinOp executa a operacao correspondente')
+
         elif self.type == 'minus':
-            return -self.children[0].Evaluate(symboltable)
+            self.children[0].Evaluate(symboltable, asm)
+            asm.AddLine('PUSH EBX ; O BinOp guarda o resultado na pillha')
+            asm.AddLine('MOV EBX, 0 ; O BinOp guarda o resultado na pillha')
+            asm.AddLine('POP EAX ; O BinOp recupera o valor da pilha para EAX')
+            asm.AddLine('SUB EBX, EAX ; O BinOp executa a operacao correspondente')
         else:
-            return not self.children[0].Evaluate(symboltable)
+            self.children[0].Evaluate(symboltable, asm)
+            asm.AddLine('NOT EBX ; O BinOp executa a operacao correspondente')
 
 class IntVal(Node):
-    def Evaluate(self,symboltable):
-        return self.value
+    def Evaluate(self, symboltable, asm):
+        # return self.value
+        asm.AddLine('MOV EBX, {0} ; Evaluate do IntVal'.format(self.value))
+
     
 class BoolVal(Node):
-    def Evaluate(self,symboltable):
+    def Evaluate(self, symboltable, asm):
         return self.value
 
 class StringVal(Node):
-    def Evaluate(self,symboltable):
+    def Evaluate(self, symboltable, asm):
         return self.value
 
 class NoOp(Node):
-    def Evaluate(self,symboltable):
+    def Evaluate(self, symboltable, asm):
         pass
 
 class Commands(Node):
-    def Evaluate(self,symboltable):
+    def Evaluate(self, symboltable, asm):
         for child in self.children:
-            child.Evaluate(symboltable)
+            child.Evaluate(symboltable, asm)
 
 class Program(Node):
-    def Evaluate(self,symboltable):
-       self.children[0].Evaluate(symboltable)
+    def Evaluate(self, symboltable, asm):
+       self.children[0].Evaluate(symboltable, asm)
 
 class Echo(Node):
-    def Evaluate(self,symboltable):
-        print(self.children[0].Evaluate(symboltable))
+    def Evaluate(self, symboltable, asm):
+        self.children[0].Evaluate(symboltable, asm)
+        asm.AddLine('PUSH EBX ; Empilha os argumentos')
+        asm.AddLine('CALL print ; Chama a funcao')
+        asm.AddLine('POP EBX ; Desempilha os argumentos')
+
 
 class Assignment(Node):
-    def Evaluate(self,symboltable):
-        value = self.children[1].Evaluate(symboltable)
-        symboltable.table[self.children[0].value] = (value, self.children[1].type)
+    def Evaluate(self, symboltable, asm):
+        if self.children[0].value not in symboltable.table:
+            asm.AddLine('PUSH DWORD 0 ; Alocacao da primeira atribuicao')
+            symboltable.var_count += 1
+
+            var_address = symboltable.var_count*4
+            self.children[1].Evaluate(symboltable, asm)
+            symboltable.table[self.children[0].value] = (var_address, self.children[1].type)
+        else:
+            self.children[1].Evaluate(symboltable, asm)
+            var_address = symboltable.table[self.children[0].value][0]
+
+
+        asm.AddLine('MOV [EBP-{0}], EBX ; Resultado da atribuicao'.format(var_address))
+    
 
 class Identifier(Node):
-    def Evaluate(self,symboltable):
+    def Evaluate(self, symboltable, asm):
         self.type = symboltable.table[self.value][1] 
-        return symboltable.table[self.value][0]
+        var_address = symboltable.table[self.value][0] 
+        asm.AddLine('MOV EBX, [EBP-{0}] ; Evaluate do identifier'.format(var_address))
+
 
 class While(Node):
-    def Evaluate(self,symboltable):
-        while self.children[0].Evaluate(symboltable):
-            self.children[1].Evaluate(symboltable)
+    def Evaluate(self, symboltable, asm):
+        loop_count = symboltable.loop_count
+        symboltable.loop_count +=1
+        asm.AddLine('LOOP_{0}: ; unique identifier do contador de loops'.format(loop_count))
+        self.children[0].Evaluate(symboltable, asm)
+        asm.AddLine('CMP EBX, False ; verifica se o teste deu falso'.format(loop_count))
+        asm.AddLine('JE EXIT_{0} ; se falso sai do loop'.format(loop_count))
+        self.children[1].Evaluate(symboltable, asm)
+        asm.AddLine('JMP LOOP_{0} ; volta para testar de novo'.format(loop_count))
+        asm.AddLine('EXIT_{0}: ; Label de saída'.format(loop_count))
+
+
 
 class If(Node):
-    def Evaluate(self,symboltable):
-        if self.children[0].Evaluate(symboltable):
-            self.children[1].Evaluate(symboltable)
+    def Evaluate(self, symboltable, asm):
+        loop_count = symboltable.loop_count
+        symboltable.loop_count +=1
+        has_else = len(self.children) == 3
+        self.children[0].Evaluate(symboltable, asm)
+        asm.AddLine('CMP EBX, False ; verifica se o teste deu falso'.format(loop_count))
+
+        if has_else:
+            asm.AddLine('JE ELSE_{0} ; se falso vai pro else'.format(loop_count))
         else:
-            if len(self.children) == 3:
-                self.children[2].Evaluate(symboltable)
+            asm.AddLine('JE EXIT_{0} ; se falso sai do loop'.format(loop_count))
+
+
+        self.children[1].Evaluate(symboltable, asm)
+        asm.AddLine('JMP EXIT_{0} ; sai do if'.format(loop_count))
+        if has_else:
+            asm.AddLine('ELSE_{0}: ; unique identifier do contador de loops'.format(loop_count))
+            self.children[2].Evaluate(symboltable, asm)
+        asm.AddLine('EXIT_{0}: ; Label de saída'.format(loop_count))
 
 class Readline(Node):
-    def Evaluate(self,symboltable):
+    def Evaluate(self, symboltable, asm):
         return int(input())
 
 class Token:
@@ -408,14 +492,13 @@ class Parser:
                 relexpr_root_aux = BinOp(tokenizer.actual.value, tokenizer.actual.type)
                 relexpr_root_aux.children.append(relexpr_root)
                 tokenizer.selectNext()
-                relexpr_root_aux.children.append(Parser.parseFactor(tokenizer))
+                relexpr_root_aux.children.append(Parser.parseExpression(tokenizer))
                 relexpr_root = relexpr_root_aux
             else:
                 relexpr_root = BinOp(tokenizer.actual.value,tokenizer.actual.type)
                 relexpr_root.children.append(node)
                 tokenizer.selectNext()
-                relexpr_root.children.append(Parser.parseFactor(tokenizer))
-            tokenizer.selectNext()
+                relexpr_root.children.append(Parser.parseExpression(tokenizer))
 
         return relexpr_root
         
@@ -513,7 +596,12 @@ class Parser:
         tokenizer = Tokenizer(lines)
         ast = Parser.parseProgram(tokenizer)
         symboltable = SymbolTable()
-        ast.Evaluate(symboltable)
+        asm = asmGen()
+        ast.Evaluate(symboltable,asm)
+        asm.finish()
+
+        for buf in asm.buffer:
+            print(buf)
         
 
 def main():
