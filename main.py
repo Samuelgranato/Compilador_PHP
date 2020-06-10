@@ -607,8 +607,12 @@ class Parser:
         ast.Evaluate(symboltable,asm)
         asm.finish()
 
+
+        f = open('program.asm','w')
         for buf in asm.buffer:
-            print(buf)
+            print(buf, file=f)
+        f.close()
+
         
 
 def main():
