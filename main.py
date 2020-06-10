@@ -1,12 +1,17 @@
 import sys
 import copy
 import re
+import operator
 
 
 class SymbolTable():
     
     def __init__(self):
         self.table = {}
+        self.functions = {}
+
+    def set_symboltable(self,symboltable):
+        self.table = symboltable.table
 
 
 class Node:
@@ -89,7 +94,9 @@ class NoOp(Node):
 class Commands(Node):
     def Evaluate(self,symboltable):
         for child in self.children:
-            child.Evaluate(symboltable)
+            ret_val = child.Evaluate(symboltable)
+            if ret_val is not None:
+                return ret_val
 
 class Program(Node):
     def Evaluate(self,symboltable):
@@ -111,20 +118,46 @@ class Identifier(Node):
 
 class While(Node):
     def Evaluate(self,symboltable):
-        while self.children[0].Evaluate(symboltable):
-            self.children[1].Evaluate(symboltable)
+        ret_val = None
+        while self.children[0].Evaluate(symboltable) and ret_val is None:
+            ret_val = self.children[1].Evaluate(symboltable)
+        return ret_val
 
 class If(Node):
     def Evaluate(self,symboltable):
         if self.children[0].Evaluate(symboltable):
-            self.children[1].Evaluate(symboltable)
+            return self.children[1].Evaluate(symboltable)
         else:
             if len(self.children) == 3:
-                self.children[2].Evaluate(symboltable)
+                return self.children[2].Evaluate(symboltable)
 
 class Readline(Node):
     def Evaluate(self,symboltable):
         return int(input())
+
+class FuncDec(Node):
+    def Evaluate(self,symboltable):
+        if self.value in symboltable.functions:
+            raise TypeError
+        symboltable.functions[self.value] = self
+
+class FuncCall(Node):
+    def Evaluate(self,symboltable):
+        calling_func_table = copy.copy(symboltable)
+        symboltable.table = {}
+        calling_func = symboltable.functions[self.value]
+        for i in range(len(calling_func.children) - 1):
+            arg = calling_func.children[i]
+            eval_value = self.children[i].Evaluate(calling_func_table)
+            symboltable.table[arg.value] = (eval_value, self.children[i].type)
+
+        ret_val = calling_func.children[len(calling_func.children)-1].Evaluate(symboltable)
+        symboltable.set_symboltable(calling_func_table)
+        return ret_val
+
+class Return(Node):
+    def Evaluate(self,symboltable):
+        return self.children[0].Evaluate(symboltable)
 
 class Token:
     def __init__(self,token_type):
@@ -138,12 +171,12 @@ class Tokenizer:
         self.selectNext()
 
 
-    def get_matches(token):
+    def get_matches(token, tokens_dict):
         matches = 0
         ret_type = None
-        for token_type, regex in Tokenizer.get_tokens_regex().items():
+        for token_type, regex in tokens_dict.items():
             pattern = re.compile(regex[0]) if regex[1] == None else re.compile(regex[0], flags = regex[1])
-            if pattern.match(token):
+            if pattern.match(token.lower()):
                 matches += 1
                 ret_type = token_type
         return matches,ret_type
@@ -151,19 +184,21 @@ class Tokenizer:
     def get_tokens_reserved():
         tokens_reserved = {}
 
-        tokens_reserved['readline']        = 'readline()'
-        tokens_reserved['open_program']    = '<?php'
-        tokens_reserved['close_program']   = '?>'
-        tokens_reserved['while']           = 'while'
-        tokens_reserved['if']              = 'if'
-        tokens_reserved['else']            = 'else'
-        tokens_reserved['and']             = 'and'
-        tokens_reserved['or']              = 'or'
-        tokens_reserved['equals']          = '=='
-        tokens_reserved['echo']            = 'echo'
-        tokens_reserved['readline']        = 'readline()'
-        tokens_reserved['true']            = 'true'
-        tokens_reserved['false']           = 'false'
+        tokens_reserved['readline']        = ('readline\(\)$', None)
+        tokens_reserved['open_program']    = ('<\?php$', None)
+        tokens_reserved['close_program']   = ('\?>$', None)
+        tokens_reserved['while']           = ('while *\($', None)
+        tokens_reserved['if']              = ('if *\($', None)
+        tokens_reserved['else']            = ('else *{$', None)
+        tokens_reserved['and']             = ('and $', None)
+        tokens_reserved['or']              = ('or $', None)
+        tokens_reserved['equals']          = ('\=\=$', None)
+        tokens_reserved['echo']            = ('echo $', None)
+        tokens_reserved['readline']        = ('readline\(\)$', None)
+        tokens_reserved['true']            = ('true$', None)
+        tokens_reserved['false']           = ('false$', None)
+        tokens_reserved['funcdec']         = ('function $', None)
+        tokens_reserved['return']          = ('return $', None)
 
         return tokens_reserved
 
@@ -185,12 +220,15 @@ class Tokenizer:
         tokens_regex['assignment']        = ('^[=]$',None)
         tokens_regex['semi-collon']       = ('^[;]$',None)
         tokens_regex['identifier']        = ('^[$][a-zA-Z][a-zA-Z0-9_]*$',None)
-        tokens_regex['string']        = ('^\".*\"$',None)
-        tokens_regex['not']        = ('^!$',None)
-        tokens_regex['notequals']        = ('^!=$',None)
-        tokens_regex['greater']        = ('^>$',None)
-        tokens_regex['less']        = ('^<$',None)
-        tokens_regex['concat']        = ('^\.$',None)
+        tokens_regex['string']            = ('^\".*\"$',None)
+        tokens_regex['not']               = ('^!$',None)
+        tokens_regex['notequals']         = ('^!=$',None)
+        tokens_regex['greater']           = ('^>$',None)
+        tokens_regex['less']              = ('^<$',None)
+        tokens_regex['concat']            = ('^\.$',None)
+        tokens_regex['comma']             = ('^\,$',None)
+        tokens_regex['function']          = ('^[a-zA-Z][a-zA-Z0-9_]*$',None)
+
 
         return tokens_regex
 
@@ -202,12 +240,12 @@ class Tokenizer:
         while token_value == '\n' and self.position + 1  != len(self.origin):
             self.position += 1
             token_value = self.origin[self.position]
-        matches, token_type = Tokenizer.get_matches(token_value)
+        matches, token_type = Tokenizer.get_matches(token_value, tokens_dict)
         
-        while matches != 1:
+        while matches != 1 and self.position + 1  != len(self.origin):
             self.position += 1
             token_value += self.origin[self.position]
-            matches, token_type = Tokenizer.get_matches(token_value)
+            matches, token_type = Tokenizer.get_matches(token_value, tokens_dict)
 
         token_value_aux = token_value
 
@@ -215,7 +253,10 @@ class Tokenizer:
             token_value = token_value_aux
             self.position += 1
             token_value_aux += self.origin[self.position]
-            matches, token_type_dummy = Tokenizer.get_matches(token_value_aux)
+            matches, token_type_dummy = Tokenizer.get_matches(token_value_aux, tokens_dict)
+
+        if token_type == None:
+            return
 
         return token_value, token_type
 
@@ -229,10 +270,6 @@ class Tokenizer:
                 return value, token_type
 
         return
-
-
-
-
 
     def selectNext(self):
         if self.position == len(self.origin):
@@ -249,7 +286,7 @@ class Tokenizer:
                 return
 
         position_aux = self.position
-        token_return = self.get_token_reserved_value()
+        token_return = self.get_token_value(Tokenizer.get_tokens_reserved())
         if token_return == None:
             self.position = position_aux
             token_return = self.get_token_value(Tokenizer.get_tokens_regex())
@@ -259,10 +296,18 @@ class Tokenizer:
 
         if token_value.endswith('\n'):
             token_value = token_value.replace('\n','')
+            self.position -= 1
+
 
         if ' ' in token_value and token_type != 'string':
-            self.selectNext()
-            return
+            token_value = token_value.replace(' ','')
+
+        if token_value[-1] == '(' and token_type != 'open_parentheses':
+            self.position -= 1
+
+        if token_value[-1] == '{' and token_type != 'open_block':
+            self.position -= 1
+
         
         self.actual = Token(token_type)
         self.actual.value = token_value
@@ -271,7 +316,7 @@ class Tokenizer:
 
 class Pre_proc():
     def remove_comments(code):
-        code = re.sub(re.compile("\/\*.*?\*\/",re.DOTALL) ,"" ,code)
+        code = re.sub(re.compile("\/\*.*?\*\/|\/\/.*?\n",re.DOTALL) ,"" ,code)
         return code
 
 class Parser:
@@ -309,7 +354,7 @@ class Parser:
     @staticmethod
     def parseCommand(tokenizer):
         if tokenizer.actual.type == 'identifier':
-            command = Assignment(None, tokenizer.actual.type)
+            command = Assignment(tokenizer.actual.value, tokenizer.actual.type)
             identifier = Identifier(tokenizer.actual.value, tokenizer.actual.type)
             command.children.append(identifier)
             tokenizer.selectNext()
@@ -389,9 +434,72 @@ class Parser:
             
 
             return command
+
+        elif tokenizer.actual.type == 'funcdec':
+
+            tokenizer.selectNext()
+            if tokenizer.actual.type != 'function':
+                raise TypeError
+
+            func_name = tokenizer.actual.value
+            command = FuncDec(func_name,'funcdec')
+            tokenizer.selectNext()
+
+
+            if tokenizer.actual.type != 'open_parentheses':
+                raise TypeError
+            tokenizer.selectNext()
+
+            while tokenizer.actual.type != 'close_parentheses':
+                identifier = Identifier(tokenizer.actual.value, tokenizer.actual.type)
+                command.children.append(identifier)
+                tokenizer.selectNext()
+
+                while tokenizer.actual.type == 'comma':
+                    tokenizer.selectNext()
+                    identifier = Identifier(tokenizer.actual.value, tokenizer.actual.type)
+                    command.children.append(identifier)
+                    tokenizer.selectNext()
+                
+            tokenizer.selectNext()
+
             
+            if tokenizer.actual.type == 'open_block':
+                    command.children.append(Parser.parseBlock(tokenizer))
+
+                    if tokenizer.actual.type != 'close_block':
+                        raise TypeError
+            else:
+                raise TypeError
+
+            return command
+
+        elif tokenizer.actual.type == 'function':
+            func_name = tokenizer.actual.value
+            command = FuncCall(func_name,'funccall')
+            tokenizer.selectNext()
+            if tokenizer.actual.type != 'open_parentheses':
+                raise TypeError
+            tokenizer.selectNext()
+
+            while tokenizer.actual.type != 'close_parentheses':
+                command.children.append(Parser.parseRelexpr(tokenizer))
+
+                while tokenizer.actual.type == 'comma':
+                    tokenizer.selectNext()
+                    command.children.append(Parser.parseRelexpr(tokenizer))
+                
+            return command
+        
+        elif tokenizer.actual.type == 'return':
+            tokenizer.selectNext()
+            command = Return(tokenizer.actual.value,tokenizer.actual.type)
+            command.children.append(Parser.parseRelexpr(tokenizer))
+
+            return command
+
         elif tokenizer.actual.type == 'semi-collon':
-            pass
+            return NoOp(None,None)
 
         else:
             command = Parser.parseBlock(tokenizer)
@@ -468,6 +576,22 @@ class Parser:
         if tokenizer.actual.type == 'int':
             factor_root = IntVal(int(tokenizer.actual.value),tokenizer.actual.type)
             return factor_root
+        if tokenizer.actual.type == 'function':
+            func_name = tokenizer.actual.value
+            command = FuncCall(func_name,'funccall')
+            tokenizer.selectNext()
+            if tokenizer.actual.type != 'open_parentheses':
+                raise TypeError
+            tokenizer.selectNext()
+
+            while tokenizer.actual.type != 'close_parentheses':
+                command.children.append(Parser.parseRelexpr(tokenizer))
+
+                while tokenizer.actual.type == 'comma':
+                    tokenizer.selectNext()
+                    command.children.append(Parser.parseRelexpr(tokenizer))
+                
+            return command
         elif tokenizer.actual.type == 'true' or tokenizer.actual.type == 'false':
             if tokenizer.actual.type == 'true':
                 factor_root = BoolVal(True, tokenizer.actual.type)

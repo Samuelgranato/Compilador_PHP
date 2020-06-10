@@ -439,5 +439,18 @@ echo $y1;
         main.main()
         self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
 
+
+    def test_52(self):
+        source= '''<?php
+    if (1 == 1){
+        echo 1;
+    }
+?>'''
+        write_testFile(source)
+        expected = '''1
+'''
+        main.main()
+        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
+
 if __name__ == '__main__':
     unittest.main()
