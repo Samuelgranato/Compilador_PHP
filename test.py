@@ -199,7 +199,13 @@ MOV EAX, 1
 INT 0x80
 '''
         main.main()
-        self.assertEqual(sys.stdout.getvalue(), expected, "Should be {0}".format(expected))
+        
+        sourcefile = open("program.asm", 'r') 
+        lines = sourcefile.read() 
+        sourcefile.close()
+
+        print(lines)
+        self.assertEqual(lines, expected, "Should be {0}".format(expected))
 
 if __name__ == '__main__':
     unittest.main()

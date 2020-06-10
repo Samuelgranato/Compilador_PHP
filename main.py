@@ -611,6 +611,7 @@ class Parser:
         f = open('program.asm','w')
         for buf in asm.buffer:
             print(buf, file=f)
+        f.close()
 
         
 
