@@ -94,9 +94,10 @@ class NoOp(Node):
 class Commands(Node):
     def Evaluate(self,symboltable):
         for child in self.children:
-            ret_val = child.Evaluate(symboltable)
-            if ret_val is not None:
-                return ret_val
+            child.Evaluate(symboltable)
+
+            if "$$$RETURN_CALL" in symboltable.table:
+                return
 
 class Program(Node):
     def Evaluate(self,symboltable):
@@ -151,13 +152,18 @@ class FuncCall(Node):
             eval_value = self.children[i].Evaluate(calling_func_table)
             symboltable.table[arg.value] = (eval_value, self.children[i].type)
 
-        ret_val = calling_func.children[len(calling_func.children)-1].Evaluate(symboltable)
+        calling_func.children[len(calling_func.children)-1].Evaluate(symboltable)
+
+        if "$$$RETURN_CALL" in symboltable.table:
+            calling_func_table.table["$$$RETURN"] = symboltable.table["$$$RETURN_CALL"]
+            symboltable.set_symboltable(calling_func_table)
+            return symboltable.table["$$$RETURN"]
         symboltable.set_symboltable(calling_func_table)
-        return ret_val
+        
 
 class Return(Node):
     def Evaluate(self,symboltable):
-        return self.children[0].Evaluate(symboltable)
+        symboltable.table["$$$RETURN_CALL"] = self.children[0].Evaluate(symboltable)
 
 class Token:
     def __init__(self,token_type):
@@ -198,7 +204,7 @@ class Tokenizer:
         tokens_reserved['true']            = ('true$', None)
         tokens_reserved['false']           = ('false$', None)
         tokens_reserved['funcdec']         = ('function $', None)
-        tokens_reserved['return']          = ('return $', None)
+        tokens_reserved['return']          = ('return[ |;]$', None)
 
         return tokens_reserved
 
@@ -306,6 +312,9 @@ class Tokenizer:
             self.position -= 1
 
         if token_value[-1] == '{' and token_type != 'open_block':
+            self.position -= 1
+        
+        if token_value[-1] == ';' and token_type != 'semi-collon':
             self.position -= 1
 
         
@@ -494,7 +503,11 @@ class Parser:
         elif tokenizer.actual.type == 'return':
             tokenizer.selectNext()
             command = Return(tokenizer.actual.value,tokenizer.actual.type)
-            command.children.append(Parser.parseRelexpr(tokenizer))
+            
+            if tokenizer.actual.type == 'semi-collon':
+                command.children.append(NoOp(None,None))
+            else:    
+                command.children.append(Parser.parseRelexpr(tokenizer))
 
             return command
 
